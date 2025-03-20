@@ -154,8 +154,9 @@ graph_m1_vs_m2_forecast_comparison <- ggplot() +
 
 print(graph_m1_vs_m2_forecast_comparison)
 
+dir.create("images")
 # Saves graph as JPEG
-ggsave("graph_m1_vs_m2_forecast_comparison.jpeg", plot = graph_m1_vs_m2_forecast_comparison, width = 8, height = 6, dpi = 300)
+ggsave("images/graph_m1_vs_m2_forecast_comparison.jpeg", plot = graph_m1_vs_m2_forecast_comparison, width = 8, height = 6, dpi = 300)
 ```
 
 ```{r Defines the confidence interval}
@@ -226,7 +227,7 @@ graph_m2_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
       theme_minimal()
 
-ggsave("graph_m2_forecast_1_cycle.jpeg", plot = graph_m2_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+ggsave("images/graph_m2_forecast_1_cycle.jpeg", plot = graph_m2_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
 print(graph_m2_forecast_1_cycle)
 ```
@@ -265,7 +266,7 @@ graph_m2_residuals_acf <- ggplot(m2_acf_df, aes(x = Lag, y = ACF)) +
   ) +
   theme_minimal()
 
-ggsave("graph_m2_residuals_acf_with_m3_confidence_interval.jpeg", plot = graph_m2_residuals_acf, width = 8, height = 6, dpi = 300)
+ggsave("images/graph_m2_residuals_acf_with_m3_confidence_interval.jpeg", plot = graph_m2_residuals_acf, width = 8, height = 6, dpi = 300)
 
 print(graph_m2_residuals_acf)
 ```
@@ -333,7 +334,7 @@ acf_plot1 <- ggplot(m3_acf_df, aes(x = Lag, y = ACF)) +
     y = "Autocorrelação"
   ) + theme_minimal()
 
-ggsave("graph_m3_acf_adjusted_residuals.jpeg", plot = acf_plot1, width = 8, height = 6, dpi = 300)
+ggsave("images/graph_m3_acf_adjusted_residuals.jpeg", plot = acf_plot1, width = 8, height = 6, dpi = 300)
 
 print(acf_plot1)
 ```
@@ -380,9 +381,9 @@ graph_m3_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
       labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") + theme_minimal()
 
-ggsave("graph_m3_forecast_1_cycle.jpeg", plot = graph_m3_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+ggsave("images/graph_m3_forecast_1_cycle.jpeg", plot = graph_m3_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
-print(grafico)
+print(graph_m3_forecast_1_cycle)
 ```
 
 ```{r M3+Sazonality with Confidence interval}
@@ -416,9 +417,9 @@ graph_m3_with_sazonality_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
       theme_minimal()
 
-ggsave("graph_m3_with_sazonality_forecast_1_cycle.jpeg", plot = graph_m3_with_sazonality_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+ggsave("images/graph_m3_with_sazonality_forecast_1_cycle.jpeg", plot = graph_m3_with_sazonality_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
-print(grafico)
+print(graph_m3_with_sazonality_forecast_1_cycle)
 ```
 
 ```{r M3 model without outliers}
@@ -499,5 +500,5 @@ acf_plot2 <- ggplot(acf_df, aes(x = Lag, y = ACF)) +
   ) +
   theme_minimal()
 
-ggsave("graph_m3_with_sazonality_without_outliers.jpeg", plot = acf_plot2, width = 8, height = 6, dpi = 300)
+ggsave("images/graph_m3_with_sazonality_without_outliers.jpeg", plot = acf_plot2, width = 8, height = 6, dpi = 300)
 ```
