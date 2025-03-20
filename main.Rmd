@@ -1,0 +1,503 @@
+---
+title: "Mixed Models for Bus Stop Delay Time Forecast"
+author:
+- name: "Luiz Ledo Melo Jr."
+  email: "luizledo@utfpr.edu.br"
+  affiliation: "1"
+  orcid_id: "0000-0003-0563-3889"
+- name: "Brendon Leonam Pasquim"
+  email: "brendonpasquim@alunos.utfpr.edu.br"
+  affiliation: "1"
+  orcid_id: "0009-0000-4890-0524"
+affiliation:
+- id: "1"
+  institution: "Federal University of Technology - Paraná (UTFPR)"
+  address: "Av. Sete de Setembro, 3165 – 80230-901 – Curitiba – PR – Brazil"
+date: "2025-03"
+output: html_document
+---
+```{r Function definition}
+translation_table <- c(seq21="t21_x",  seq20="t20,21", seq19="t19,20", seq18="t18,19", seq17="t17,18",
+                       seq16="t16,17", seq15="t15,16", seq14="t14,15", seq13="t13,14", seq12="t12,13",
+                       seq11="t11,12", seq10="t10,11", seq9="t9,10",   seq8="t8,9",    seq7="t7,8",
+                       seq6="t6,7",    seq5="t5,6",    seq4="t4,5",    seq3="t3,4",    seq2="t2,3",    seq1="t1,2")
+
+translate_label <- function(element_name) {
+  return(translation_table[[element_name]])
+}
+
+# Function to convert "hh:mm:ss" to seconds
+time_to_seconds <- function(time_str) {
+  time_parts <- as.numeric(unlist(strsplit(time_str, ":")))
+  return(time_parts[1] * 3600 + time_parts[2] * 60 + time_parts[3])
+}
+```
+
+```{r Library imports}
+library(readxl)
+require(nlme)
+library(lattice)
+library(ggplot2)#Export graph as JPEG
+library(forecast)
+library(tseries)
+```
+
+```{r Arbitrary input parameters}
+vehicle_id <- "{VEHICLE_ID_HERE}"
+itinerary_id <- "{ITINERARY_ID_HERE}"
+last_bus_stop_seq <- 18 #{integer number indicating the last sequency number for the chosen itinerary}
+```
+
+```{r Bus itinerary data input}
+dados=read.csv(".\\input.csv")
+```
+
+```{r Data filtering on Vehicle and Itinerary ID}
+dados_raw <- dados
+dados <- dados[dados[,2]==vehicle_id,]
+dados <- dados[dados[,4]==itinerary_id,]
+```
+
+```{r Adjust time data to "yyyy-MM-dd hh:mm:ss" format}
+time_part <- format(as.POSIXct(dados$event_time, format="%Y-%m-%d %H:%M:%S"), "%H:%M:%S")
+dados$time_in_seconds <- sapply(time_part, time_to_seconds)
+diftempo=diff(dados$time_in_seconds)
+dados$dif=c(diftempo,0)
+```
+
+```{r Data clean up on Seq 0 and Seq 18 "outliers"}
+dados <- dados[dados[,6]!=0,]#Seq 0 itinerary entry signalizes a day-start (occurs only once) and is irrelevant for the itinerary calculation.
+dados <- dados[dados[,6]!=last_bus_stop_seq,]#Last diff is calculated between the last bus stop and an unknown value, so that the value is invalid and discarded.
+```
+
+```{r Runs a mixed-effect model on itinerary data}
+sample_number <- nrow(dados)
+#Runs a mixed-effect model for a specific vehicle and itinerary. Entry file can store multiples vehicles and itineraries.
+#ML = Maximum Likelihood
+model.b <- lme(dif ~ 1 , data=dados[1:sample_number,], random= ~ 1 | seq, method="ML")# M1 and M2 models
+```
+
+```{r Splits result data into fixed and random }
+fixed <- list(Referencia = model.b$fitted[[1]])
+
+#Random Effect - Top 5 e Bottom 5
+top_5 <- sort(unlist(model.b$coefficients$random), decreasing = TRUE)[1:5]
+bottom_5 <- sort(unlist(model.b$coefficients$random), decreasing = FALSE)[1:5]
+
+#Defines a set of values of interest for graph plotting
+numbers_of_interest = c(top_5, sort(bottom_5, decreasing = TRUE))
+```
+
+```{r Define colors, labels and axis limits for graph plotting}
+set_of_colors <- rainbow(length(numbers_of_interest))
+
+#Formats the graph labels to follow the t_x,y notation
+translated_labels <- lapply(names(numbers_of_interest), function(element_name) translate_label(element_name))
+
+#Defines the fixed-effect color to black
+translate_labels_and_ref = c("Efeito Fixo", translated_labels)
+set_of_colors_and_ref = c("black", set_of_colors)
+
+xlimit <- sample_number + 50
+#Defines the y-axis limit as the sum of the fixed-effect + biggest random-effect + 50)
+ylimit <- fixed[[1]] + top_5[[1]] + 50
+```
+
+```{r Plots the graph of wait time between all bus stops}
+plot.ts(dados$dif, xlab="", ylab="")
+title("Tempos de Espera entre Pontos (Todos)", xlab="Número de Amostras", ylab="Tempo de Espera (Segundos)")
+```
+
+```{r Plots the graph for fixed and random effects}
+plot(1,
+     type = "n",
+     col = "red",
+     xlim = c(0, xlimit),
+     ylim = c(0, ylimit),
+     ylab = "Tempo de Espera (Segundos)",
+     xlab = "Número de Amostras")
+title("Tempos de Espera entre Pontos (5 maiores, 5 menores e Efeito Fixo)")
+
+# Plots the fixed-effect curve as baseline
+abline(h = fixed, col = "black", lty = 2)  # Horizontal line at value
+
+# Plots the composition of fixed and random effects
+for (index in seq_along(numbers_of_interest)) {
+  abline(h = numbers_of_interest[index] + fixed[[1]], col = set_of_colors[index], lty = 2)  # Horizontal line at value
+}
+
+legend("topright", legend = translate_labels_and_ref, col = set_of_colors_and_ref, lty = 2)
+```
+
+```{r M1 vs M2 forecast comparison}
+m1_vs_m2_forecast_comparison <- data.frame(
+  dif = dados$dif,
+  M1 = model.b$fitted[,1],
+  M2 = model.b$fitted[,2],
+  index = seq_along(dados$dif) # seq_along creates indexes for the list of elements
+)
+
+# Builds a combined graph containing M1 (Fixed), M2 (Random) and time difference (real value)
+graph_m1_vs_m2_forecast_comparison <- ggplot() +
+  geom_point(data = m1_vs_m2_forecast_comparison, aes(x = index, y = dif), color = "blue", size = 2) + # Pontos (dif)
+  geom_line(data = m1_vs_m2_forecast_comparison, aes(x = index, y = M1, color = "Previsão Efeito Fixo (M1)"), size = 1) + # Linha para M1
+  geom_line(data = m1_vs_m2_forecast_comparison, aes(x = index, y = M2, color = "Previsão Efeito Aleatório (M2)"), size = 1) + # Linha para M2
+  labs(
+    title = "Gráfico com M1 vs M2",
+    x = "Índice",
+    y = "Tempo de Espera",
+    color = "Legenda"
+  ) +
+  theme_minimal() +
+  # Centralizes the graph title
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(graph_m1_vs_m2_forecast_comparison)
+
+# Saves graph as JPEG
+ggsave("graph_m1_vs_m2_forecast_comparison.jpeg", plot = graph_m1_vs_m2_forecast_comparison, width = 8, height = 6, dpi = 300)
+```
+
+```{r Defines the confidence interval}
+# Verifies which variables are needed to reduce variability
+predicoes <- predict(model.b, level = 1)
+
+# Calculate the standard error for forecasts
+se_pred <- sqrt(diag(vcov(model.b)))
+
+# Defines a confidence interval, for example, 95%
+nivel_confianca <- 0.99
+z_valor <- qnorm((1 + nivel_confianca) / 2)
+
+# Calculates the limits of the confidence interval
+limite_inferior <- predicoes - z_valor * se_pred
+limite_superior <- predicoes + z_valor * se_pred
+```
+
+```{r Plots M2 forecasts with confidence interval for a whole day}
+m2_forecasts_with_confidence_interval_whole_day <- data.frame(
+  Observados = dados$dif,
+  Previsoes = predicoes,
+  Limite_Inferior = limite_inferior,
+  Limite_Superior = limite_superior
+)
+
+ggplot(m2_forecasts_with_confidence_interval_whole_day, aes(x = seq_along(predicoes))) +
+  geom_point(aes(y = Observados), color = "blue", size = 2) +  # Dados observados
+  geom_line(aes(y = Previsoes), color = "red") +               # Previsões
+  geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
+  geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
+  labs(title = "Previsões com Intervalos de Confiança", x = "Índice", y = "Valores") +
+  theme_minimal()
+```
+
+```{r M2 forecast with confidence interval for 1 only itinerary cycle}
+m2_forecast_with_confidence_interval_1_cycle <- data.frame(
+  Seq = dados$seq,
+  Observados = dados$dif,
+  Previsoes = predicoes,
+  Limite_Inferior = limite_inferior,
+  Limite_Superior = limite_superior
+)
+
+ggplot(m2_forecast_with_confidence_interval_1_cycle, aes(x = Seq)) +
+      geom_point(aes(y = Observados), color = "blue", size = 2) +  # Dados observados
+      geom_line(aes(y = Previsoes), color = "red") +               # Previsões
+      geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
+      geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
+      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
+      theme_minimal()
+```
+
+```{r M2 with Confidence Interval}
+dados1 <- data.frame(
+  Seq = dados$seq,
+  Observados = dados$dif,
+  Previsoes = predicoes,
+  Limite_Inferior = limite_inferior,
+  Limite_Superior = limite_superior
+)
+
+graph_m2_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
+      geom_point(aes(y = Observados), color = "blue", size = 2) +  # Dados observados
+      geom_line(aes(y = Previsoes), color = "red") +               # Previsões
+      geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
+      geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
+      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
+      theme_minimal()
+
+ggsave("graph_m2_forecast_1_cycle.jpeg", plot = graph_m2_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+
+print(graph_m2_forecast_1_cycle)
+```
+
+```{r Autoregressive residual model of order 1 (M3)}
+model.b2 <- lme(
+  dif ~ 1,
+  data = dados[1:sample_number, ],
+  random = ~1 | seq,
+  correlation = corAR1(form = ~ 1 | seq),
+  method = "ML"
+)
+```
+
+```{r M2 Residuals Autocorrelation graph with M3 confidence interval}
+# Calculates ACF for residuals (with no plotting)
+acf_data <- acf(model.b$residuals[,2], plot = FALSE)
+
+# Transforms the results into a dataframe
+m2_acf_df <- data.frame(
+  Lag = acf_data$lag,
+  ACF = acf_data$acf
+)
+
+graph_m2_residuals_acf <- ggplot(m2_acf_df, aes(x = Lag, y = ACF)) +
+  geom_bar(stat = "identity", width = 0.1, fill = "blue") + # Barras verticais
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") + # Linha em zero
+  geom_hline(yintercept = c(-1.96 / sqrt(length(model.b2$residuals[,2])),
+                            1.96 / sqrt(length(model.b2$residuals[,2]))),
+                          color = "red",
+                          linetype = "dotted") + # Limites de significância
+  labs(
+    title = "Gráfico de Autocorrelação (ACF)",
+    x = "Defasagem (Lag)",
+    y = "Autocorrelação"
+  ) +
+  theme_minimal()
+
+ggsave("graph_m2_residuals_acf_with_m3_confidence_interval.jpeg", plot = graph_m2_residuals_acf, width = 8, height = 6, dpi = 300)
+
+print(graph_m2_residuals_acf)
+```
+
+```{r M3 Adjusted Residuals calculation}
+# Includes an autoregressive component
+# Defining residuals and creating the AR(1) predicts
+residuos <- model.b2$residuals[,2]
+preditos <- rep(NA, length(residuos))
+
+# AR(1) Model for predictions
+for (t in 2:length(residuos)) {
+  preditos[t] <- 0.3037 * residuos[t - 1]  # AR(1) with Phi coefficient = 0.3037
+}
+preditos[1] <- 0  # Initializing the first value with 0 (zero)
+
+# Calculates the adjusted residuals
+adjusted_residuals <- residuos - preditos
+```
+
+```{r Autoregressive model with sazonality on M3 residuals (M3+Sazonality)}
+# Model with sazonality and autoregression
+autoregressive_model_with_sazonality=arima(residuos, order = c(1, 0, 0), seasonal = list(order = c(1, 0, 0), period = 16))
+```
+
+```{r Model Validation tests on M3+Sazonality residuals}
+# Plots ACF on the M3+Sazonality model residuals
+acf(autoregressive_model_with_sazonality$residuals)
+
+# Plots the M3+Sazonality model residuals
+plot.ts(autoregressive_model_with_sazonality$residuals)
+
+# Runs the Box-Ljung test on the M3+Sazonality model residuals
+Box.test(autoregressive_model_with_sazonality$residuals, lag = 10, type = "Ljung-Box")
+
+# Runs the Augmented Dickey-Fuller test on the M3+Sazonality model residuals
+adf.test(autoregressive_model_with_sazonality$residuals)
+
+# Extracts the fitted portion of the M3+Sazonality model
+preditos1=fitted((autoregressive_model_with_sazonality))
+
+# Calculates the Mean squared error (MSE) of the M3+Sazonality model
+sum((dados$dif-(model.b2$fitted[,2]+preditos1))^2)/nrow(dados)
+```
+
+```{r M3 Autocorrelation Graph on Adjusted Residuals}
+# Generates the ACF data for the adjusted residuals
+m3_acf_data <- acf(adjusted_residuals)
+
+m3_acf_df <- data.frame(
+  Lag = m3_acf_data$lag,
+  ACF = m3_acf_data$acf
+)
+
+acf_plot1 <- ggplot(m3_acf_df, aes(x = Lag, y = ACF)) +
+  geom_bar(stat = "identity", fill = "blue", width = 0.2) +  # Barras de autocorrelação
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") +  # Linha no zero
+  geom_hline(
+    yintercept = c(-1.96 / sqrt(length(adjusted_residuals)), 1.96 / sqrt(length(adjusted_residuals))),
+    color = "red", linetype = "dotted"
+  ) +  # Limites de significância
+  labs(
+    title = "Autocorrelação dos Resíduos Ajustados (ACF)",
+    x = "Defasagem (Lag)",
+    y = "Autocorrelação"
+  ) + theme_minimal()
+
+ggsave("graph_m3_acf_adjusted_residuals.jpeg", plot = acf_plot1, width = 8, height = 6, dpi = 300)
+
+print(acf_plot1)
+```
+
+```{r Model Validation tests on M3 residuals}
+sum((dados$dif-(model.b2$fitted[,2]+preditos))^2)/nrow(dados)
+
+residuos_studentizados <- residuals(model.b2, type = "pearson")
+
+hist(residuos_studentizados)
+qqnorm(residuos_studentizados)
+qqline(residuos_studentizados, col = "red")
+shapiro.test(residuos_studentizados)
+acf(diff(residuos_studentizados))
+```
+
+```{r M3 with Confidence interval}
+predicoes <- predict(model.b2, level = 1)+preditos
+
+# Calculates the standard error of the forecasts
+se_pred <- sqrt(diag(vcov(model.b2)))
+
+# Defines the confidence level, for example, 95%
+nivel_confianca <- 0.99
+z_valor <- qnorm((1 + nivel_confianca) / 2)
+
+# Calculates the limits for the confidence interval
+limite_inferior <- predicoes - z_valor * se_pred
+limite_superior <- predicoes + z_valor * se_pred
+
+# Creates a dataframe with forecasts, limits for the confidence interval and real world observed data
+dados1 <- data.frame(
+  Seq = dados$seq,
+  Observados = dados$dif,
+  Previsoes = predicoes,
+  Limite_Inferior = limite_inferior,
+  Limite_Superior = limite_superior
+)
+
+graph_m3_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
+      geom_point(aes(y = Observados), color = "blue", size = 2) +  # Real world observed data
+      geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
+      geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
+      geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
+      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") + theme_minimal()
+
+ggsave("graph_m3_forecast_1_cycle.jpeg", plot = graph_m3_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+
+print(grafico)
+```
+
+```{r M3+Sazonality with Confidence interval}
+predicoes <- predict(model.b2, level = 1)+preditos1
+
+# Calculates the standard error of the forecasts
+se_pred <- sqrt(diag(vcov(model.b2)))
+
+# Defines the confidence level, for example, 95%
+nivel_confianca <- 0.99
+z_valor <- qnorm((1 + nivel_confianca) / 2)
+
+# Calculates the limits for the confidence interval
+limite_inferior <- predicoes - z_valor * se_pred
+limite_superior <- predicoes + z_valor * se_pred
+
+# Creates a dataframe with forecasts, limits for the confidence interval and real world observed data
+dados1 <- data.frame(
+  Seq = dados$seq,
+  Observados = dados$dif,
+  Previsoes = predicoes,
+  Limite_Inferior = limite_inferior,
+  Limite_Superior = limite_superior
+)
+
+graph_m3_with_sazonality_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
+      geom_point(aes(y = Observados), color = "blue", size = 2) +  # Real world observed data
+      geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
+      geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
+      geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
+      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
+      theme_minimal()
+
+ggsave("graph_m3_with_sazonality_forecast_1_cycle.jpeg", plot = graph_m3_with_sazonality_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+
+print(grafico)
+```
+
+```{r M3 model without outliers}
+# This code chuck runs the same steps applied previously to M3, but using a new dataset where outliers are filtered out.
+
+# Pearson Residuals = Fifference between the observed values and the predicted values, divided by the estimated standard deviation of the predicted values.
+residuos_pearson <- residuals(model.b2, type = "pearson")
+
+# Identifying outliers (residuals with absolute value bigger than 2)
+outliers <- abs(residuos_pearson) > 2
+
+# Filtering out real world observed data that are outliers
+dados_sem_outliers <- dados[1:sample_number, ][!outliers, ]
+
+# Adjusting the model with the data without outliers
+model.b2_sem_outliers <- lme(
+  dif ~ 1,
+  data = dados_sem_outliers,
+  random = ~1 | seq,
+  correlation = corAR1(form = ~ 1 | seq),
+  method = "ML"
+)
+
+# Extracts the residuals portion of the model
+residuos_pearson_sem_outliers <- residuals(model.b2_sem_outliers, type = "pearson")
+
+# Plots a histogram of the Pearson residuals without outliers
+hist(residuos_pearson_sem_outliers, main = "Histograma dos Resíduos de Pearson sem Outliers", col = "blue")
+
+summary(model.b2_sem_outliers)
+
+# Plots ACF for the model without outliers
+acf(model.b2_sem_outliers$residuals[,2])
+
+residuos <- model.b2_sem_outliers$residuals[,2]
+preditos <- rep(NA, length(residuos))
+
+for (t in 2:length(residuos)) {
+  preditos[t] <- 0.2626 * residuos[t - 1]  # AR(1) model with Phi coefficient = 0.2626
+}
+preditos[1] <- 0
+
+residuos_ajustados <- residuos - preditos
+
+# Run validation tests on residuals
+acf_data <- acf(residuos_ajustados)
+shapiro.test(residuos_ajustados)
+residuos_studentizados <- residuals(model.b2_sem_outliers, type = "pearson")
+qqnorm(residuos_studentizados)
+qqline(residuos_studentizados, col = "red")
+shapiro.test(residuos_studentizados)
+hist(residuos_studentizados)
+acf(residuos_studentizados)
+
+# Calculates the Mean squared error (MSE)
+sum(model.b$residuals[,1]^2)/nrow(dados)
+```
+
+```{r M3+Sazonality model without outliers}
+acf_data2<-acf(autoregressive_model_with_sazonality$residuals)
+
+acf_df <- data.frame(
+  Lag = acf_data2$lag,
+  ACF = acf_data2$acf
+)
+
+acf_plot2 <- ggplot(acf_df, aes(x = Lag, y = ACF)) +
+  geom_bar(stat = "identity", fill = "blue", width = 0.2) +  # Autocorrelation bars
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") +  # Line on zero
+  geom_hline(
+    yintercept = c(-1.96 / sqrt(length(residuos_ajustados)), 1.96 / sqrt(length(residuos_ajustados))),
+    color = "red", linetype = "dotted"
+  ) +  # Significance limits
+  labs(
+    title = "Autocorrelação dos Resíduos Ajustados (ACF)",
+    x = "Defasagem (Lag)",
+    y = "Autocorrelação"
+  ) +
+  theme_minimal()
+
+ggsave("graph_m3_with_sazonality_without_outliers.jpeg", plot = acf_plot2, width = 8, height = 6, dpi = 300)
+```
