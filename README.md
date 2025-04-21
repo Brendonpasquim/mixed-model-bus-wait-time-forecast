@@ -13,7 +13,7 @@ This project implements a set of mixed models that forecast the wait time at bus
 
 ## Pseudocode
 
-``` json
+```
 Calculate_Wait_Times(Vehicle_ID, Itinerary_ID, data)
   // Input: Bus identifier
   // Input: Itinerary identifier
