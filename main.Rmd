@@ -1,5 +1,5 @@
 ---
-title: "Mixed Models for Bus Stop Delay Time Forecast"
+title: "Mixed Models for Bus Stop Wait Time Forecast"
 author:
 - name: "Luiz Ledo Melo Jr."
   email: "luizledo@utfpr.edu.br"
@@ -70,6 +70,11 @@ dados <- dados[dados[,6]!=0,]#Seq 0 itinerary entry signalizes a day-start (occu
 dados <- dados[dados[,6]!=last_bus_stop_seq,]#Last diff is calculated between the last bus stop and an unknown value, so that the value is invalid and discarded.
 ```
 
+```{r Plots the graph of wait time between bus stops for a whole day}
+plot.ts(dados$dif, xlab="", ylab="")
+title("Tempos de Espera entre Pontos (Todos)", xlab="Sequência de Pontos de Parada", ylab="Tempo de Espera (Segundos)")
+```
+
 ```{r Runs a mixed-effect model on itinerary data}
 sample_number <- nrow(dados)
 #Runs a mixed-effect model for a specific vehicle and itinerary. Entry file can store multiples vehicles and itineraries.
@@ -101,11 +106,6 @@ set_of_colors_and_ref = c("black", set_of_colors)
 xlimit <- sample_number + 50
 #Defines the y-axis limit as the sum of the fixed-effect + biggest random-effect + 50)
 ylimit <- fixed[[1]] + top_5[[1]] + 50
-```
-
-```{r Plots the graph of wait time between all bus stops}
-plot.ts(dados$dif, xlab="", ylab="")
-title("Tempos de Espera entre Pontos (Todos)", xlab="Número de Amostras", ylab="Tempo de Espera (Segundos)")
 ```
 
 ```{r Plots the graph for fixed and random effects}
@@ -144,13 +144,13 @@ graph_m1_vs_m2_forecast_comparison <- ggplot() +
   geom_line(data = m1_vs_m2_forecast_comparison, aes(x = index, y = M2, color = "Previsão Efeito Aleatório (M2)"), size = 1) + # Linha para M2
   labs(
     title = "Gráfico com M1 vs M2",
-    x = "Índice",
+    x = "Sequência de Pontos de Parada",
     y = "Tempo de Espera",
     color = "Legenda"
   ) +
   theme_minimal() +
   # Centralizes the graph title
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom")
 
 print(graph_m1_vs_m2_forecast_comparison)
 
@@ -188,7 +188,7 @@ ggplot(m2_forecasts_with_confidence_interval_whole_day, aes(x = seq_along(predic
   geom_line(aes(y = Previsoes), color = "red") +               # Previsões
   geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
   geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
-  labs(title = "Previsões com Intervalos de Confiança", x = "Índice", y = "Valores") +
+  labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
   theme_minimal()
 ```
 
@@ -206,7 +206,7 @@ ggplot(m2_forecast_with_confidence_interval_1_cycle, aes(x = Seq)) +
       geom_line(aes(y = Previsoes), color = "red") +               # Previsões
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
-      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
+      labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
       theme_minimal()
 ```
 
@@ -224,7 +224,7 @@ graph_m2_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       geom_line(aes(y = Previsoes), color = "red") +               # Previsões
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
-      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
+      labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
       theme_minimal()
 
 ggsave("images/graph_m2_forecast_1_cycle.jpeg", plot = graph_m2_forecast_1_cycle, width = 8, height = 6, dpi = 300)
@@ -379,7 +379,7 @@ graph_m3_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
-      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") + theme_minimal()
+      labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") + theme_minimal()
 
 ggsave("images/graph_m3_forecast_1_cycle.jpeg", plot = graph_m3_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
@@ -414,7 +414,7 @@ graph_m3_with_sazonality_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
-      labs(title = "Previsões com Intervalos de Confiança", x = "Seq", y = "Valores") +
+      labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
       theme_minimal()
 
 ggsave("images/graph_m3_with_sazonality_forecast_1_cycle.jpeg", plot = graph_m3_with_sazonality_forecast_1_cycle, width = 8, height = 6, dpi = 300)
@@ -425,7 +425,7 @@ print(graph_m3_with_sazonality_forecast_1_cycle)
 ```{r M3 model without outliers}
 # This code chuck runs the same steps applied previously to M3, but using a new dataset where outliers are filtered out.
 
-# Pearson Residuals = Fifference between the observed values and the predicted values, divided by the estimated standard deviation of the predicted values.
+# Pearson Residuals = Difference between the observed values and the predicted values, divided by the estimated standard deviation of the predicted values.
 residuos_pearson <- residuals(model.b2, type = "pearson")
 
 # Identifying outliers (residuals with absolute value bigger than 2)
