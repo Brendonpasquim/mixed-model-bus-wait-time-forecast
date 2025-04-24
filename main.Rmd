@@ -42,9 +42,15 @@ library(forecast)
 library(tseries)
 ```
 
+```{r Environment setup}
+image_folder <- "images"
+unlink(image_folder, recursive = TRUE)
+dir.create(image_folder)
+```
+
 ```{r Arbitrary input parameters}
-vehicle_id <- "{VEHICLE_ID_HERE}"
-itinerary_id <- "{ITINERARY_ID_HERE}"
+vehicle_id <- "HA310"
+itinerary_id <- "12494"
 last_bus_stop_seq <- 18 #{integer number indicating the last sequency number for the chosen itinerary}
 ```
 
@@ -72,7 +78,7 @@ dados <- dados[dados[,6]!=last_bus_stop_seq,]#Last diff is calculated between th
 
 ```{r Plots the graph of wait time between bus stops for a whole day}
 plot.ts(dados$dif, xlab="", ylab="")
-title("Tempos de Espera entre Pontos (Todos)", xlab="Sequência de Pontos de Parada", ylab="Tempo de Espera (Segundos)")
+title("Tempos de Espera entre Pontos de Parada (Todos)", xlab="Sequência de Pontos de Parada", ylab="Tempo de Espera (Segundos)")
 ```
 
 ```{r Runs a mixed-effect model on itinerary data}
@@ -115,7 +121,7 @@ plot(1,
      xlim = c(0, xlimit),
      ylim = c(0, ylimit),
      ylab = "Tempo de Espera (Segundos)",
-     xlab = "Número de Amostras")
+     xlab = "Sequência de Pontos de Parada")
 title("Tempos de Espera entre Pontos (5 maiores, 5 menores e Efeito Fixo)")
 
 # Plots the fixed-effect curve as baseline
@@ -143,7 +149,7 @@ graph_m1_vs_m2_forecast_comparison <- ggplot() +
   geom_line(data = m1_vs_m2_forecast_comparison, aes(x = index, y = M1, color = "Previsão Efeito Fixo (M1)"), size = 1) + # Linha para M1
   geom_line(data = m1_vs_m2_forecast_comparison, aes(x = index, y = M2, color = "Previsão Efeito Aleatório (M2)"), size = 1) + # Linha para M2
   labs(
-    title = "Gráfico com M1 vs M2",
+    title = "Comparação de Previsão dos modelos M1 vs M2",
     x = "Sequência de Pontos de Parada",
     y = "Tempo de Espera",
     color = "Legenda"
@@ -154,9 +160,8 @@ graph_m1_vs_m2_forecast_comparison <- ggplot() +
 
 print(graph_m1_vs_m2_forecast_comparison)
 
-dir.create("images")
 # Saves graph as JPEG
-ggsave("images/graph_m1_vs_m2_forecast_comparison.jpeg", plot = graph_m1_vs_m2_forecast_comparison, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m1_vs_m2_forecast_comparison.jpeg"), plot = graph_m1_vs_m2_forecast_comparison, width = 8, height = 6, dpi = 300)
 ```
 
 ```{r Defines the confidence interval}
@@ -224,10 +229,10 @@ graph_m2_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       geom_line(aes(y = Previsoes), color = "red") +               # Previsões
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
-      labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
+      labs(title = "Previsões com Intervalos de Confiança (M2 - 1 Itinerário)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
       theme_minimal()
 
-ggsave("images/graph_m2_forecast_1_cycle.jpeg", plot = graph_m2_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m2_forecast_1_cycle.jpeg"), plot = graph_m2_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
 print(graph_m2_forecast_1_cycle)
 ```
@@ -260,13 +265,13 @@ graph_m2_residuals_acf <- ggplot(m2_acf_df, aes(x = Lag, y = ACF)) +
                           color = "red",
                           linetype = "dotted") + # Limites de significância
   labs(
-    title = "Gráfico de Autocorrelação (ACF)",
+    title = "Gráfico de Autocorrelação (ACF) de M2 com IdC de M3",
     x = "Defasagem (Lag)",
     y = "Autocorrelação"
   ) +
   theme_minimal()
 
-ggsave("images/graph_m2_residuals_acf_with_m3_confidence_interval.jpeg", plot = graph_m2_residuals_acf, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m2_residuals_acf_with_m3_confidence_interval.jpeg"), plot = graph_m2_residuals_acf, width = 8, height = 6, dpi = 300)
 
 print(graph_m2_residuals_acf)
 ```
@@ -329,12 +334,12 @@ acf_plot1 <- ggplot(m3_acf_df, aes(x = Lag, y = ACF)) +
     color = "red", linetype = "dotted"
   ) +  # Limites de significância
   labs(
-    title = "Autocorrelação dos Resíduos Ajustados (ACF)",
+    title = "Autocorrelação dos Resíduos Ajustados (ACF) de M3",
     x = "Defasagem (Lag)",
     y = "Autocorrelação"
   ) + theme_minimal()
 
-ggsave("images/graph_m3_acf_adjusted_residuals.jpeg", plot = acf_plot1, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m3_acf_adjusted_residuals.jpeg"), plot = acf_plot1, width = 8, height = 6, dpi = 300)
 
 print(acf_plot1)
 ```
@@ -379,9 +384,9 @@ graph_m3_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
-      labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") + theme_minimal()
+      labs(title = "Previsões com Intervalos de Confiança (M3 - 1 Itinerário)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") + theme_minimal()
 
-ggsave("images/graph_m3_forecast_1_cycle.jpeg", plot = graph_m3_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m3_forecast_1_cycle.jpeg"), plot = graph_m3_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
 print(graph_m3_forecast_1_cycle)
 ```
@@ -414,10 +419,10 @@ graph_m3_with_sazonality_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
       geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
-      labs(title = "Previsões com Intervalos de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
+      labs(title = "Previsões com Intervalos de Confiança (M3 Sazonal - 1 Itinerário)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
       theme_minimal()
 
-ggsave("images/graph_m3_with_sazonality_forecast_1_cycle.jpeg", plot = graph_m3_with_sazonality_forecast_1_cycle, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m3_with_sazonality_forecast_1_cycle.jpeg"), plot = graph_m3_with_sazonality_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
 print(graph_m3_with_sazonality_forecast_1_cycle)
 ```
@@ -494,11 +499,11 @@ acf_plot2 <- ggplot(acf_df, aes(x = Lag, y = ACF)) +
     color = "red", linetype = "dotted"
   ) +  # Significance limits
   labs(
-    title = "Autocorrelação dos Resíduos Ajustados (ACF)",
+    title = "Autocorrelação dos Resíduos Ajustados (ACF) (M3 - Sem outliers)",
     x = "Defasagem (Lag)",
     y = "Autocorrelação"
   ) +
   theme_minimal()
 
-ggsave("images/graph_m3_with_sazonality_without_outliers.jpeg", plot = acf_plot2, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m3_with_sazonality_without_outliers.jpeg"), plot = acf_plot2, width = 8, height = 6, dpi = 300)
 ```
