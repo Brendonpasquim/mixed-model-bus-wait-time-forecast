@@ -49,8 +49,8 @@ dir.create(image_folder)
 ```
 
 ```{r Arbitrary input parameters}
-vehicle_id <- "HA310"
-itinerary_id <- "12494"
+vehicle_id <- "{VEHICLE_ID_HERE}"
+itinerary_id <- "{ITINERARY_ID_HERE}"
 last_bus_stop_seq <- 18 #{integer number indicating the last sequency number for the chosen itinerary}
 ```
 
