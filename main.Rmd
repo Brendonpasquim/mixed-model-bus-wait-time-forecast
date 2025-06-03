@@ -17,10 +17,18 @@ date: "2025-03"
 output: html_document
 ---
 ```{r Function definition}
-translation_table <- c(seq21="t21_x",  seq20="t20,21", seq19="t19,20", seq18="t18,19", seq17="t17,18",
-                       seq16="t16,17", seq15="t15,16", seq14="t14,15", seq13="t13,14", seq12="t12,13",
-                       seq11="t11,12", seq10="t10,11", seq9="t9,10",   seq8="t8,9",    seq7="t7,8",
-                       seq6="t6,7",    seq5="t5,6",    seq4="t4,5",    seq3="t3,4",    seq2="t2,3",    seq1="t1,2")
+translation_table <- c(
+  seq21="t21➜x",  seq20="t20➜21", seq19="t19➜20", seq18="t18➜19", seq17="t17➜18",
+  seq16="t16➜17", seq15="t15➜16", seq14="t14➜15", seq13="t13➜14", seq12="t12➜13",
+  seq11="t11➜12", seq10="t10➜11", seq9="t9➜10",   seq8="t8➜9",    seq7="t7➜8",
+  seq6="t6➜7",    seq5="t5➜6",    seq4="t4➜5",    seq3="t3➜4",    seq2="t2➜3",    seq1="t1➜2")
+
+translation_table_2 <- c(
+  seq21 = "t₂₁→x",  seq20 = "t₂₀→₂₁",  seq19 = "t₁₉→₂₀",  seq18 = "t₁₈→₁₉",  seq17 = "t₁₇→₁₈",
+  seq16 = "t₁₆→₁₇",  seq15 = "t₁₅→₁₆",  seq14 = "t₁₄→₁₅",  seq13 = "t₁₃→₁₄",  seq12 = "t₁₂→₁₃",
+  seq11 = "t₁₁→₁₂",  seq10 = "t₁₀→₁₁",  seq9  = "t₉→₁₀",   seq8  = "t₈→₉",    seq7  = "t₇→₈",
+  seq6  = "t₆→₇",    seq5  = "t₅→₆",    seq4  = "t₄→₅",    seq3  = "t₃→₄",    seq2  = "t₂→₃",  seq1 = "t₁→₂"
+)
 
 translate_label <- function(element_name) {
   return(translation_table[[element_name]])
@@ -115,24 +123,27 @@ ylimit <- fixed[[1]] + top_5[[1]] + 50
 ```
 
 ```{r Plots the graph for fixed and random effects}
+png(file=file.path(image_folder, "graph_top_bottom_5.png"), width=1024, height=768, res=100)
+
 plot(1,
      type = "n",
      col = "red",
      xlim = c(0, xlimit),
      ylim = c(0, ylimit),
      ylab = "Tempo de Espera (Segundos)",
-     xlab = "Sequência de Pontos de Parada")
+     xlab = "")
 title("Tempos de Espera entre Pontos (5 maiores, 5 menores e Efeito Fixo)")
 
 # Plots the fixed-effect curve as baseline
-abline(h = fixed, col = "black", lty = 2)  # Horizontal line at value
+abline(h = fixed, col = "black", lty = 2, lwd = 3)  # Horizontal line at value
 
 # Plots the composition of fixed and random effects
 for (index in seq_along(numbers_of_interest)) {
-  abline(h = numbers_of_interest[index] + fixed[[1]], col = set_of_colors[index], lty = 2)  # Horizontal line at value
+  abline(h = numbers_of_interest[index] + fixed[[1]], col = set_of_colors[index], lty = 2, lwd = 3)  # Horizontal line at value
 }
 
-legend("topright", legend = translate_labels_and_ref, col = set_of_colors_and_ref, lty = 2)
+legend("topright", legend = translate_labels_and_ref, col = set_of_colors_and_ref, lty = 2, lwd = 3, cex = 1.25)
+dev.off()
 ```
 
 ```{r M1 vs M2 forecast comparison}
@@ -161,7 +172,11 @@ graph_m1_vs_m2_forecast_comparison <- ggplot() +
 print(graph_m1_vs_m2_forecast_comparison)
 
 # Saves graph as JPEG
-ggsave(file.path(image_folder, "graph_m1_vs_m2_forecast_comparison.jpeg"), plot = graph_m1_vs_m2_forecast_comparison, width = 8, height = 6, dpi = 300)
+ggsave(file.path(image_folder, "graph_m1_vs_m2_forecast_comparison.jpeg"),
+       plot = graph_m1_vs_m2_forecast_comparison,
+       width = 8,
+       height = 6,
+       dpi = 300)
 ```
 
 ```{r Defines the confidence interval}
@@ -188,16 +203,23 @@ m2_forecasts_with_confidence_interval_whole_day <- data.frame(
   Limite_Superior = limite_superior
 )
 
-ggplot(m2_forecasts_with_confidence_interval_whole_day, aes(x = seq_along(predicoes))) +
+graph_m2_forecast_with_confidence_interval <- ggplot(m2_forecasts_with_confidence_interval_whole_day, aes(x = seq_along(predicoes))) +
   geom_point(aes(y = Observados), color = "blue", size = 2) +  # Dados observados
   geom_line(aes(y = Previsoes), color = "red") +               # Previsões
   geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
   geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
   labs(title = "Previsões com Intervalo de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
   theme_minimal()
+
+# Saves graph as JPEG
+ggsave(file.path(image_folder, "graph_m2_forecast_with_confidence_interval.jpeg"),
+       plot = graph_m2_forecast_with_confidence_interval,
+       width = 8,
+       height = 6,
+       dpi = 300)
 ```
 
-```{r M2 forecast with confidence interval for 1 only itinerary cycle}
+```{r M2 forecast with confidence interval and aggregated itinerary cycle}
 m2_forecast_with_confidence_interval_1_cycle <- data.frame(
   Seq = dados$seq,
   Observados = dados$dif,
@@ -206,30 +228,12 @@ m2_forecast_with_confidence_interval_1_cycle <- data.frame(
   Limite_Superior = limite_superior
 )
 
-ggplot(m2_forecast_with_confidence_interval_1_cycle, aes(x = Seq)) +
+graph_m2_forecast_1_cycle <- ggplot(m2_forecast_with_confidence_interval_1_cycle, aes(x = Seq)) +
       geom_point(aes(y = Observados), color = "blue", size = 2) +  # Dados observados
       geom_line(aes(y = Previsoes), color = "red") +               # Previsões
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
-      labs(title = "Previsões com Intervalo de Confiança", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
-      theme_minimal()
-```
-
-```{r M2 with Confidence Interval}
-dados1 <- data.frame(
-  Seq = dados$seq,
-  Observados = dados$dif,
-  Previsoes = predicoes,
-  Limite_Inferior = limite_inferior,
-  Limite_Superior = limite_superior
-)
-
-graph_m2_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
-      geom_point(aes(y = Observados), color = "blue", size = 2) +  # Dados observados
-      geom_line(aes(y = Previsoes), color = "red") +               # Previsões
-      geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Limite inferior
-      geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Limite superior
-      labs(title = "Previsões com Intervalo de Confiança (M2 - 1 Itinerário)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
+      labs(title = "Previsões com Intervalo de Confiança (M2 - Agrupado)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
       theme_minimal()
 
 ggsave(file.path(image_folder, "graph_m2_forecast_1_cycle.jpeg"), plot = graph_m2_forecast_1_cycle, width = 8, height = 6, dpi = 300)
@@ -258,14 +262,14 @@ m2_acf_df <- data.frame(
 )
 
 graph_m2_residuals_acf <- ggplot(m2_acf_df, aes(x = Lag, y = ACF)) +
-  geom_bar(stat = "identity", width = 0.1, fill = "blue") + # Barras verticais
+  geom_bar(stat = "identity", width = 0.2, fill = "blue") + # Barras verticais
   geom_hline(yintercept = 0, color = "black", linetype = "dashed") + # Linha em zero
   geom_hline(yintercept = c(-1.96 / sqrt(length(model.m3$residuals[,2])),
                             1.96 / sqrt(length(model.m3$residuals[,2]))),
                           color = "red",
                           linetype = "dotted") + # Limites de significância
   labs(
-    title = "Autocorrelação dos Resíduos de M2",
+    title = "Autocorrelação dos Resíduos (M2)",
     x = "Defasagem (Lag)",
     y = "Autocorrelação"
   ) +
@@ -334,7 +338,7 @@ acf_plot1 <- ggplot(m3_acf_df, aes(x = Lag, y = ACF)) +
     color = "red", linetype = "dotted"
   ) +  # Limites de significância
   labs(
-    title = "Autocorrelação dos Resíduos Ajustados M3",
+    title = "Autocorrelação dos Resíduos Ajustados (M3)",
     x = "Defasagem (Lag)",
     y = "Autocorrelação"
   ) + theme_minimal()
@@ -371,7 +375,7 @@ limite_inferior <- predicoes - z_valor * se_pred
 limite_superior <- predicoes + z_valor * se_pred
 
 # Creates a dataframe with forecasts, limits for the confidence interval and real world observed data
-dados1 <- data.frame(
+m3_forecast_with_confidence_interval_1_cycle <- data.frame(
   Seq = dados$seq,
   Observados = dados$dif,
   Previsoes = predicoes,
@@ -379,12 +383,12 @@ dados1 <- data.frame(
   Limite_Superior = limite_superior
 )
 
-graph_m3_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
+graph_m3_forecast_1_cycle <- ggplot(m3_forecast_with_confidence_interval_1_cycle, aes(x = Seq)) +
       geom_point(aes(y = Observados), color = "blue", size = 2) +  # Real world observed data
       geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
-      labs(title = "Previsões com Intervalo de Confiança (M3 - 1 Itinerário)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") + theme_minimal()
+      labs(title = "Previsões com Intervalo de Confiança (M3 - Agrupado)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") + theme_minimal()
 
 ggsave(file.path(image_folder, "graph_m3_forecast_1_cycle.jpeg"), plot = graph_m3_forecast_1_cycle, width = 8, height = 6, dpi = 300)
 
@@ -406,7 +410,7 @@ limite_inferior <- predicoes - z_valor * se_pred
 limite_superior <- predicoes + z_valor * se_pred
 
 # Creates a dataframe with forecasts, limits for the confidence interval and real world observed data
-dados1 <- data.frame(
+m3_with_sazonality_forecast_with_confidence_interval_1_cycle <- data.frame(
   Seq = dados$seq,
   Observados = dados$dif,
   Previsoes = predicoes,
@@ -414,12 +418,12 @@ dados1 <- data.frame(
   Limite_Superior = limite_superior
 )
 
-graph_m3_with_sazonality_forecast_1_cycle <- ggplot(dados1, aes(x = Seq)) +
+graph_m3_with_sazonality_forecast_1_cycle <- ggplot(m3_with_sazonality_forecast_with_confidence_interval_1_cycle, aes(x = Seq)) +
       geom_point(aes(y = Observados), color = "blue", size = 2) +  # Real world observed data
       geom_line(aes(y = Previsoes), color = "red") +               # Forecasts
       geom_line(aes(y = Limite_Inferior), color = "orange", linetype = "dashed") +  # Lower Limit
       geom_line(aes(y = Limite_Superior), color = "orange", linetype = "dashed") +  # Higher Limit
-      labs(title = "Previsões com Intervalo de Confiança (M3 Sazonal - 1 Itinerário)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
+      labs(title = "Previsões com Intervalo de Confiança (M3 Sazonal - Agrupado)", x = "Sequência de Pontos de Parada", y = "Tempo de Espera (Segundos)") +
       theme_minimal()
 
 ggsave(file.path(image_folder, "graph_m3_with_sazonality_forecast_1_cycle.jpeg"), plot = graph_m3_with_sazonality_forecast_1_cycle, width = 8, height = 6, dpi = 300)
@@ -506,4 +510,6 @@ acf_plot2 <- ggplot(acf_df, aes(x = Lag, y = ACF)) +
   theme_minimal()
 
 ggsave(file.path(image_folder, "graph_m3_acf_with_sazonality.jpeg"), plot = acf_plot2, width = 8, height = 6, dpi = 300)
+
+print(acf_plot2)
 ```
