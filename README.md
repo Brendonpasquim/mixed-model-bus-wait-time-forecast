@@ -1,5 +1,8 @@
 # mixed-model-bus-wait-time-forecast
 
+## Author
+Repository author can be contacted through the e-mail `brendonpasquim@alunos.utfpr.edu.br`
+
 ## Scope
 
 This project implements a set of mixed models that forecast the wait time at bus stops in urban public transport.
@@ -9,7 +12,23 @@ This project implements a set of mixed models that forecast the wait time at bus
 - `input.csv` file shows the expected data input format;
 - This was developed considering the Curitiba - Brazil data model provided by URBS/IPPUC. However, with minor adjustments it should easily fit other datasets.
 - This source code is available to be reused and extended, but it is mandatory to give credits to the authors.
-  - For academic researchers, it is possible to cite the related white paper.
+  - For academic researchers, it is possible to cite the related white paper:
+``` latex
+@inproceedings{courb,
+ author = {Brendon Pasquim and Keiko Fonseca and Luiz Melo Jr.},
+ title = {Quando chega? Análise de previsibilidade de tempos de espera em transporte público urbano utilizando Modelos Mistos},
+ booktitle = {Anais do IX Workshop de Computação Urbana},
+ location = {Natal/RN},
+ year = {2025},
+ keywords = {Previsão de tempo de espera, Modelos mistos, Transporte público urbano, Dados abertos},
+ issn = {2595-2706},
+ pages = {15--28},
+ publisher = {SBC},
+ address = {Porto Alegre, RS, Brasil},
+ doi = {10.5753/courb.2025.7932},
+ url = {https://sol.sbc.org.br/index.php/courb/article/view/35248}
+}
+```
 
 ## Pseudocode
 
