@@ -85,8 +85,10 @@ dados <- dados[dados[,6]!=last_bus_stop_seq,]#Last diff is calculated between th
 ```
 
 ```{r Plots the graph of wait time between bus stops for a whole day}
+png(file=file.path(image_folder, "graph_raw_wait_times_whole_day"), width=1024, height=768, res=100)
 plot.ts(dados$dif, xlab="", ylab="")
-title("Tempos de Espera entre Pontos de Parada (Todos)", xlab="Sequência de Pontos de Parada", ylab="Tempo de Espera (Segundos)")
+title("Tempos de Espera entre Pontos de Parada (Dia Completo)", xlab="Sequência de Pontos de Parada", ylab="Tempo de Espera (Segundos)")
+dev.off()
 ```
 
 ```{r Runs a mixed-effect model on itinerary data}
