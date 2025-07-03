@@ -12,7 +12,7 @@ author:
 affiliation:
 - id: "1"
   institution: "Federal University of Technology - Paraná (UTFPR)"
-  address: "Av. Sete de Setembro, 3165 – 80230-901 – Curitiba – PR – Brazil"
+  address: "Av. Sete de Setembro, 3165 - 80230-901 - Curitiba - PR - Brazil"
 date: "2025-03"
 output: html_document
 ---
