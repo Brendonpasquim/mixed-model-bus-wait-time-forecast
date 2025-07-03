@@ -1,0 +1,162 @@
+---
+title: "Extended Least Squares estimation in R"
+author:
+- name: "Luiz Ledo Melo Jr."
+  email: "luizledo@utfpr.edu.br"
+  affiliation: "1"
+  orcid_id: "0000-0003-0563-3889"
+- name: "Brendon Leonam Pasquim"
+  email: "brendonpasquim@alunos.utfpr.edu.br"
+  affiliation: "1"
+  orcid_id: "0009-0000-4890-0524"
+affiliation:
+- id: "1"
+  institution: "Federal University of Technology - Paraná (UTFPR)"
+  address: "Av. Sete de Setembro, 3165 - 80230-901 - Curitiba - PR - Brazil"
+date: "2025-03"
+output: html_document
+---
+
+```{r}
+require(nlme)
+require(forecast)
+```
+
+```{r}
+set.seed(1234)
+
+# Start of Simulation
+Ngroups <- 4
+NperGroup <- 100
+N <- Ngroups * NperGroup
+
+groups <- factor(rep(1:Ngroups, each = NperGroup))
+```
+
+```{r}
+# Random effects of the groups
+u <- rnorm(Ngroups, sd = 3)
+
+# Generating error with auto regressive AR(1) structure
+phi <- 0.6  # Defines the autocorrelation between consecutive errors
+e <- arima.sim(model = list(ar = phi), n = N, sd = 1)
+
+# Observed response
+y <- 50 + u[groups] + e
+
+# Creating the data frame
+d <- data.frame(y, groups)
+
+# Apply Extended Least Squares
+res <- lme(y ~ 1,
+           random = ~1 | groups,
+           correlation = corAR1(form = ~ 1|groups ),data=d)
+res1 <- lme(y ~ 1,
+            random = ~1 | groups,
+            data=d)
+
+summary(res)
+summary(res1)
+```
+
+```{r}
+# Analyze coefficients
+res$coefficients
+res1$coefficients
+```
+
+```{r}
+# Analyze the MSE (Mean Squared Error)
+sum(res$residuals[,2]^2)/400
+sum(res1$residuals[,2]^2)/400
+head(res1$residuals[,2])
+```
+
+```{r}
+# Let's check auto regressive residuals
+acf(res$residuals[,2])
+residuos = res$residuals[,2]
+preditos <- rep(NA, length(residuos))  # Vector to store fitted values
+```
+
+```{r}
+# AR(1) model for predictions
+for (t in 2:length(residuos)) {
+  preditos[t] <- 0.6591349 * residuos[t - 1]  # AR(1) with coefficient 0.6591349
+}
+preditos[1] <- 0  # Initializing the first value as 0
+```
+
+```{r}
+# New MSE
+preditosnew = res$fitted[,2] + preditos
+sum((y - preditosnew)^2)/400
+```
+
+```{r}
+# Analysis of Variance to estimate variances
+res2 = aov(y ~ 1 + groups, data = d)
+summary(res2)
+```
+
+```{r}
+# Estimation with equations
+sigma2 = 1.8
+sigmaT = (2388.7 - sigma2) / 100
+
+X = matrix(rep(1, 400), ncol = 1)
+Z = matrix(c(rep(1, 100),
+             rep(0, 300),
+             rep(0, 100),
+             rep(1, 100),
+             rep(0, 200),
+             rep(0, 200),
+             rep(1, 100),
+             rep(0, 100),
+             rep(0, 300),
+             rep(1, 100)),
+           ncol = 4)
+
+G = diag(sigmaT, 4)
+sigma = diag(sigma2, 400)
+V = Z %*% G %*% t(Z) + sigma
+betaM = solve(t(X) %*% solve(V) %*% X) %*% t(X) %*% solve(V) %*% y
+```
+
+```{r}
+# Calculation of random effects
+u1 = G %*% t(Z) %*% solve(V) %*% (y - X %*% betaM)
+betaM
+u1
+```
+
+```{r}
+# Analyze proposed MSE
+residuo = y - (X %*% betaM + Z %*% u1)
+head(residuo)
+sum(residuo^2) / 400
+
+# Note that the estimation we propose matches the first part of res1 (only random effects)
+```
+
+```{r}
+# Residual autocorrelation
+acf(residuo)
+```
+
+```{r}
+# Fitting
+ajuste = arima(residuo, order = c(1, 0, 0), include.mean = F)
+ajuste
+# Note that 0.6432 is very close to 0.6591349
+```
+
+```{r}
+preditos1 = fitted(ajuste)
+preditosnew1 = as.vector(X %*% betaM + Z %*% u1) + preditos1
+
+# New adjusted MSE
+sum((y - preditosnew1)^2) / 400
+
+# New improved MSE
+```
